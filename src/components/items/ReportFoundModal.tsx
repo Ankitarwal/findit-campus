@@ -22,7 +22,7 @@ interface ReportFoundModalProps {
 }
 
 export const ReportFoundModal: React.FC<ReportFoundModalProps> = ({ onClose, onSuccess, onRequireAuth }) => {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const { createReport } = useData();
 
   const [title, setTitle] = useState('');
@@ -86,7 +86,7 @@ export const ReportFoundModal: React.FC<ReportFoundModalProps> = ({ onClose, onS
         description: description.trim(),
         category,
         location: location.trim(),
-        occurred_at: new Date(occurredAt).toISOString(),
+        occurred_at: occurredAt ? new Date(occurredAt).toISOString() : new Date().toISOString(),
         image_path: finalImagePath,
         distinguishing_features: distinguishingFeatures.trim() || undefined,
         contact_phone: contactPhone.trim() || undefined,
@@ -112,18 +112,28 @@ export const ReportFoundModal: React.FC<ReportFoundModalProps> = ({ onClose, onS
           <p className="text-xs text-slate-600 leading-relaxed">
             Please sign in with your campus account before reporting a found item. This enables you to review verified claims and coordinate return handover with campus security.
           </p>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <button onClick={onClose} className="btn-secondary text-xs px-4 py-2.5">
-              Cancel
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={async () => {
+                await login('samantha.chen@campus.edu');
+              }}
+              className="btn-teal text-xs px-4 py-2.5 w-full sm:w-auto"
+            >
+              1-Click Student Login
             </button>
             <button
+              type="button"
               onClick={() => {
                 onClose();
                 if (onRequireAuth) onRequireAuth();
               }}
-              className="btn-teal text-xs px-5 py-2.5"
+              className="btn-secondary text-xs px-4 py-2.5 w-full sm:w-auto"
             >
-              Sign In / Register
+              Sign In with My Email
+            </button>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xs px-3 py-2">
+              Cancel
             </button>
           </div>
         </div>
