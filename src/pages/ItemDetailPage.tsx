@@ -38,6 +38,7 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
   const { user, isAdmin } = useAuth();
 
   const [claimModalOpen, setClaimModalOpen] = useState(false);
+  const [targetClaimReport, setTargetClaimReport] = useState<ItemReport | null>(null);
   const [isScanningAi, setIsScanningAi] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [flagReported, setFlagReported] = useState(false);
@@ -201,7 +202,10 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
               {/* Claim Action (If Found item and user is not the reporter) */}
               {!isLost && !isOwner && report.status !== 'returned' && (
                 <button
-                  onClick={() => setClaimModalOpen(true)}
+                  onClick={() => {
+                    setTargetClaimReport(report);
+                    setClaimModalOpen(true);
+                  }}
                   className="btn-primary text-xs px-5 py-2.5"
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
@@ -362,7 +366,10 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
                   match={match}
                   currentReport={report}
                   oppositeReport={oppositeReport}
-                  onRequestClaim={(_target: ItemReport) => setClaimModalOpen(true)}
+                  onRequestClaim={(targetReport: ItemReport) => {
+                    setTargetClaimReport(targetReport);
+                    setClaimModalOpen(true);
+                  }}
                   onViewOppositeReport={(target: ItemReport) => onNavigate('item-detail', { reportId: target.id })}
                 />
               );
@@ -374,10 +381,19 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
       {/* Claim Modal */}
       {claimModalOpen && (
         <ClaimModal
-          report={report}
-          onClose={() => setClaimModalOpen(false)}
+          report={targetClaimReport || report}
+          onClose={() => {
+            setClaimModalOpen(false);
+            setTargetClaimReport(null);
+          }}
+          onRequireAuth={() => {
+            setClaimModalOpen(false);
+            setTargetClaimReport(null);
+            onNavigate('auth');
+          }}
           onSuccess={() => {
             setClaimModalOpen(false);
+            setTargetClaimReport(null);
             setSuccessMsg('Claim submitted successfully! The finder and Campus Security have been notified for physical handover verification.');
           }}
         />

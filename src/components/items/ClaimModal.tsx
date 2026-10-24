@@ -14,9 +14,10 @@ interface ClaimModalProps {
   report: ItemReport;
   onClose: () => void;
   onSuccess: () => void;
+  onRequireAuth?: () => void;
 }
 
-export const ClaimModal: React.FC<ClaimModalProps> = ({ report, onClose, onSuccess }) => {
+export const ClaimModal: React.FC<ClaimModalProps> = ({ report, onClose, onSuccess, onRequireAuth }) => {
   const { user, profile } = useAuth();
   const { createClaim } = useData();
 
@@ -57,6 +58,57 @@ export const ClaimModal: React.FC<ClaimModalProps> = ({ report, onClose, onSucce
       setIsSubmitting(false);
     }
   };
+
+  if (!user) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-sm animate-fadeIn">
+        <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-elevated border border-slate-100 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto border border-indigo-200">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <h3 className="text-xl font-bold text-slate-900">Sign In Required</h3>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Please sign in with your campus account before filing an ownership claim. This enables campus security to verify physical return.
+          </p>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button onClick={onClose} className="btn-secondary text-xs px-4 py-2.5">
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                onClose();
+                if (onRequireAuth) onRequireAuth();
+              }}
+              className="btn-primary text-xs px-5 py-2.5"
+            >
+              Sign In / Register
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (user.id === report.reporter_id) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-sm animate-fadeIn">
+        <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-elevated border border-slate-100 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <h3 className="text-xl font-bold text-slate-900">Your Own Report</h3>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            You are the author of this report ({report.title}). You cannot submit an ownership claim against an item you posted yourself.
+          </p>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button onClick={onClose} className="btn-secondary text-xs px-4 py-2.5">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-sm animate-fadeIn">
