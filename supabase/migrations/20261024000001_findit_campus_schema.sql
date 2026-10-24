@@ -26,7 +26,7 @@ BEGIN
     new.id,
     new.email,
     COALESCE(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1)),
-    COALESCE(new.raw_user_meta_data->>'role', 'student')
+    'student' -- Strict security: All new signups are students. Admin privileges must be granted by existing admin.
   )
   ON CONFLICT (id) DO UPDATE SET
     email = EXCLUDED.email,
@@ -309,20 +309,31 @@ CREATE POLICY "Authenticated users or system can append audit logs"
   TO authenticated
   WITH CHECK (true);
 
--- 11. STORAGE BUCKET CONFIGURATION (item-photos)
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('item-photos', 'item-photos', true)
-ON CONFLICT (id) DO NOTHING;
+-- 11. STORAGE BUCKET CONFIGURATION (item-photos & item-images)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES 
+  ('item-photos', 'item-photos', true, 5242880, ARRAY['image/png', 'image/jpeg', 'image/jpg', 'image/webp']),
+  ('item-images', 'item-images', true, 5242880, ARRAY['image/png', 'image/jpeg', 'image/jpg', 'image/webp'])
+ON CONFLICT (id) DO UPDATE SET
+  public = true,
+  file_size_limit = 5242880,
+  allowed_mime_types = ARRAY['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 
--- Storage policies for item-photos
+-- Storage policies for item-photos and item-images
 DROP POLICY IF EXISTS "Public item photos are viewable" ON storage.objects;
 CREATE POLICY "Public item photos are viewable"
   ON storage.objects FOR SELECT
   TO public
-  USING (bucket_id = 'item-photos');
+  USING (bucket_id IN ('item-photos', 'item-images'));
 
 DROP POLICY IF EXISTS "Authenticated users can upload item photos" ON storage.objects;
 CREATE POLICY "Authenticated users can upload item photos"
   ON storage.objects FOR INSERT
   TO authenticated
-  WITH CHECK (bucket_id = 'item-photos');
+  WITH CHECK (bucket_id IN ('item-photos', 'item-images'));
+
+DROP POLICY IF EXISTS "Users can update own item photos" ON storage.objects;
+CREATE POLICY "Users can update own item photos"
+  ON storage.objects FOR UPDATE
+  TO authenticated
+  USING (bucket_id IN ('item-photos', 'item-images') AND auth.uid() = owner);
