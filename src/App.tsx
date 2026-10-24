@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
-import { DemoBanner } from './components/common/DemoBanner';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
 import { HomePage } from './pages/HomePage';
@@ -36,9 +35,6 @@ export const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800 antialiased selection:bg-primary-100 selection:text-primary-900">
       
-      {/* Top Hackathon Demo Persona Banner */}
-      <DemoBanner />
-
       {/* Main Navbar */}
       <Navbar
         currentPage={currentPage}
@@ -111,6 +107,10 @@ export const AppContent: React.FC = () => {
         <ReportLostModal
           onClose={() => setReportLostOpen(false)}
           onSuccess={handleReportCreated}
+          onRequireAuth={() => {
+            setReportLostOpen(false);
+            navigateTo('auth');
+          }}
         />
       )}
 
@@ -118,6 +118,10 @@ export const AppContent: React.FC = () => {
         <ReportFoundModal
           onClose={() => setReportFoundOpen(false)}
           onSuccess={handleReportCreated}
+          onRequireAuth={() => {
+            setReportFoundOpen(false);
+            navigateTo('auth');
+          }}
         />
       )}
 

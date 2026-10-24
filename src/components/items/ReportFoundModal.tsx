@@ -11,13 +11,16 @@ import {
 import { CATEGORY_LABELS } from '../../types/database';
 import type { ItemCategory } from '../../types/database';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface ReportFoundModalProps {
   onClose: () => void;
   onSuccess: (reportId: string) => void;
+  onRequireAuth?: () => void;
 }
 
-export const ReportFoundModal: React.FC<ReportFoundModalProps> = ({ onClose, onSuccess }) => {
+export const ReportFoundModal: React.FC<ReportFoundModalProps> = ({ onClose, onSuccess, onRequireAuth }) => {
+  const { user } = useAuth();
   const { createReport } = useData();
 
   const [title, setTitle] = useState('');
@@ -81,6 +84,36 @@ export const ReportFoundModal: React.FC<ReportFoundModalProps> = ({ onClose, onS
       setIsSubmitting(false);
     }
   };
+
+  if (!user) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-sm animate-fadeIn">
+        <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-elevated border border-slate-100 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-tealAccent-50 text-tealAccent-700 flex items-center justify-center mx-auto border border-tealAccent-200">
+            <FolderOpen className="w-6 h-6" />
+          </div>
+          <h3 className="text-xl font-bold text-slate-900">Sign In Required</h3>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Please sign in with your campus account before reporting a found item. This enables you to review verified claims and coordinate return handover with campus security.
+          </p>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button onClick={onClose} className="btn-secondary text-xs px-4 py-2.5">
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                onClose();
+                if (onRequireAuth) onRequireAuth();
+              }}
+              className="btn-teal text-xs px-5 py-2.5"
+            >
+              Sign In / Register
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-sm animate-fadeIn">

@@ -114,7 +114,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Create a new report with Gemma 4 analysis and automatic matching
   const createReport = async (input: CreateReportInput): Promise<{ report: ItemReport; matches: MatchComparison[] }> => {
-    const reporterId = user?.id || 'usr-student-01';
+    if (!user) {
+      throw new Error('You must be signed in to submit an item report. Please sign in or create an account.');
+    }
+    const reporterId = user.id;
     const referenceCode = generateReferenceCode(input.report_type);
 
     // Feature A: Gemma 4 analysis
