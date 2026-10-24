@@ -189,14 +189,51 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    // Synchronize match IDs in case report ID was assigned by Supabase
+    const finalizedMatches = candidateMatches.map(m => {
+      const isLostNew = newReport.report_type === 'lost';
+      const lostId = isLostNew ? newReport.id : m.lost_report_id;
+      const foundId = !isLostNew ? newReport.id : m.found_report_id;
+      return {
+        ...m,
+        id: `match-${lostId}-${foundId}`,
+        lost_report_id: lostId,
+        found_report_id: foundId,
+      };
+    });
+
     // State update
     setReports(prev => [newReport, ...prev]);
 
-    if (candidateMatches.length > 0) {
-      setMatches(prev => [...candidateMatches, ...prev]);
+    if (finalizedMatches.length > 0) {
+      setMatches(prev => [...finalizedMatches, ...prev]);
+
+      // Save matches to Supabase if configured and IDs are valid UUIDs
+      if (isSupabaseConfigured()) {
+        try {
+          for (const match of finalizedMatches) {
+            // Only insert into Supabase if both reports exist in Supabase (valid UUIDs)
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (uuidRegex.test(match.lost_report_id) && uuidRegex.test(match.found_report_id)) {
+              await supabase.from('item_matches').upsert([{
+                lost_report_id: match.lost_report_id,
+                found_report_id: match.found_report_id,
+                relevance_score: match.relevance_score,
+                match_reasons: match.match_reasons,
+                conflicts: match.conflicts,
+                missing_information: match.missing_information,
+                recommendation: match.recommendation,
+                model_name: match.model_name,
+              }], { onConflict: 'lost_report_id,found_report_id' });
+            }
+          }
+        } catch (err) {
+          console.warn('Supabase match upsert fallback:', err);
+        }
+      }
 
       // Create in-app notification for the reporter
-      const topMatch = candidateMatches[0];
+      const topMatch = finalizedMatches[0];
       const newNotif: Notification = {
         id: `notif-${Date.now()}`,
         recipient_id: reporterId,
