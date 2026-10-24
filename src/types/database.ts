@@ -82,6 +82,7 @@ export interface ItemReport {
   distinguishing_features?: string;
   withhold_public_details: boolean;
   status: ReportStatus;
+  contact_phone?: string;
   ai_analysis?: GemmaAnalysisResult;
   created_at: string;
   updated_at: string;

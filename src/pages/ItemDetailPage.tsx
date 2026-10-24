@@ -11,7 +11,8 @@ import {
   Lock, 
   RotateCw,
   PlusCircle,
-  FileCheck
+  FileCheck,
+  Phone
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -177,6 +178,20 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
                   <Calendar className="w-4 h-4 text-slate-400" />
                   <span><strong>Reported Date:</strong> {formatDateTime(report.occurred_at)} ({formatRelativeTime(report.occurred_at)})</span>
                 </div>
+                {report.contact_phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-emerald-600" />
+                    <span>
+                      <strong>Contact:</strong>{' '}
+                      <a 
+                        href={`tel:${report.contact_phone}`}
+                        className="text-primary-600 hover:underline font-semibold"
+                      >
+                        {report.contact_phone}
+                      </a>
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 

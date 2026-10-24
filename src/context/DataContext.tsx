@@ -33,6 +33,7 @@ interface CreateReportInput {
   image_path?: string;
   distinguishing_features?: string;
   withhold_public_details: boolean;
+  contact_phone?: string;
 }
 
 interface CreateClaimInput {
@@ -141,6 +142,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       image_path: input.image_path,
       distinguishing_features: input.distinguishing_features,
       withhold_public_details: input.withhold_public_details,
+      contact_phone: input.contact_phone,
       status: 'reported',
       ai_analysis: analysis,
       created_at: new Date().toISOString(),
@@ -171,6 +173,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           image_path: newReport.image_path,
           distinguishing_features: newReport.distinguishing_features,
           withhold_public_details: newReport.withhold_public_details,
+          contact_phone: newReport.contact_phone,
           status: newReport.status,
           ai_analysis: newReport.ai_analysis,
         }]).select().single();

@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS public.item_reports (
   occurred_at TIMESTAMPTZ NOT NULL,
   image_path TEXT,
   distinguishing_features TEXT,
+  contact_phone TEXT,
   withhold_public_details BOOLEAN NOT NULL DEFAULT false,
   status TEXT NOT NULL DEFAULT 'reported' CHECK (status IN (
     'reported',
@@ -87,6 +88,9 @@ CREATE TABLE IF NOT EXISTS public.item_reports (
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+-- Ensure column exists if table was created in an earlier iteration
+ALTER TABLE public.item_reports ADD COLUMN IF NOT EXISTS contact_phone TEXT;
 
 -- 4. ITEM MATCHES TABLE (Gemma 4 Matches)
 CREATE TABLE IF NOT EXISTS public.item_matches (

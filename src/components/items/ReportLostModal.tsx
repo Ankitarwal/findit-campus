@@ -5,7 +5,8 @@ import {
   Upload, 
   AlertTriangle, 
   ShieldAlert, 
-  Compass
+  Compass,
+  Phone
 } from 'lucide-react';
 import { CATEGORY_LABELS } from '../../types/database';
 import type { ItemCategory } from '../../types/database';
@@ -29,6 +30,7 @@ export const ReportLostModal: React.FC<ReportLostModalProps> = ({ onClose, onSuc
   const [location, setLocation] = useState('');
   const [occurredAt, setOccurredAt] = useState(new Date().toISOString().slice(0, 16));
   const [distinguishingFeatures, setDistinguishingFeatures] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
   const [imagePath, setImagePath] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,6 +91,7 @@ export const ReportLostModal: React.FC<ReportLostModalProps> = ({ onClose, onSuc
         image_path: finalImagePath,
         distinguishing_features: distinguishingFeatures.trim() || undefined,
         withhold_public_details: false,
+        contact_phone: contactPhone.trim() || undefined,
       });
 
       setIsSubmitting(false);
@@ -261,6 +264,24 @@ export const ReportLostModal: React.FC<ReportLostModalProps> = ({ onClose, onSuc
               onChange={e => setDistinguishingFeatures(e.target.value)}
               className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
+          </div>
+
+          {/* Contact Phone / WhatsApp */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Contact Phone / WhatsApp (Optional)
+            </label>
+            <div className="relative">
+              <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="tel"
+                placeholder="e.g. +1 (555) 019-2834 or WhatsApp number"
+                value={contactPhone}
+                onChange={e => setContactPhone(e.target.value)}
+                className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">Allows the finder or campus security to reach you directly when matched.</p>
           </div>
 
           {/* Photo Upload & Quick Samples */}
