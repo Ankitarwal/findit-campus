@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --navy-primary: #0f2442;
+    --navy-surface: #1e3a5f;
+    --blue-accent: #2563eb;
+    --teal-accent: #0d9488;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .badge-lost {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/80;
+  }
+
+  .badge-found {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80;
+  }
+
+  .badge-returned {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200/80;
+  }
+
+  .badge-review {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200/80;
+  }
+
+  .glass-card {
+    @apply bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-subtle rounded-2xl;
+  }
+
+  .glass-header {
+    @apply bg-white/80 backdrop-blur-lg border-b border-slate-200/80;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm text-white bg-primary-600 hover:bg-primary-700 active:scale-[0.98] transition-all shadow-sm hover:shadow-glow-blue disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 active:scale-[0.98] transition-all shadow-subtle hover:border-slate-300 disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-teal {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm text-white bg-tealAccent-600 hover:bg-tealAccent-700 active:scale-[0.98] transition-all shadow-sm hover:shadow-glow-teal disabled:opacity-50 disabled:pointer-events-none;
+  }
+}
