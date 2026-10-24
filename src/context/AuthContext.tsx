@@ -60,31 +60,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Initialize Auth State on App Startup
   useEffect(() => {
     const initAuth = async () => {
+      let sessionEstablished = false;
+
       if (isSupabaseConfigured()) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
-            setUser({ id: session.user.id, email: session.user.email || '' });
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
+            const authUser = { id: session.user.id, email: session.user.email || '' };
+            setUser(authUser);
+            sessionEstablished = true;
 
-            if (profileData) {
-              setProfile(profileData);
+            try {
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+
+              if (profileData) {
+                setProfile(profileData);
+              } else {
+                setProfile({
+                  id: session.user.id,
+                  email: session.user.email || '',
+                  display_name: session.user.user_metadata?.display_name || session.user.email?.split('@')[0] || 'Student',
+                  role: (session.user.user_metadata?.role as UserRole) || 'student',
+                  created_at: session.user.created_at,
+                });
+              }
+            } catch {
+              setProfile({
+                id: session.user.id,
+                email: session.user.email || '',
+                display_name: session.user.user_metadata?.display_name || session.user.email?.split('@')[0] || 'Student',
+                role: (session.user.user_metadata?.role as UserRole) || 'student',
+                created_at: session.user.created_at,
+              });
             }
-          } else {
-            setUser(null);
-            setProfile(null);
           }
         } catch (err) {
-          console.warn('Supabase auth session fetch error:', err);
-          setUser(null);
-          setProfile(null);
+          console.warn('Supabase auth session fetch warning:', err);
         }
-      } else {
-        // Restore persistent session from localStorage if user previously logged in
+      }
+
+      // If no Supabase session was found, check localStorage session fallback
+      if (!sessionEstablished) {
         try {
           const savedSession = localStorage.getItem(LOCAL_STORAGE_SESSION_KEY);
           if (savedSession) {
@@ -92,40 +112,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (parsed?.user && parsed?.profile) {
               setUser(parsed.user);
               setProfile(parsed.profile);
-            } else {
-              setUser(null);
-              setProfile(null);
+              sessionEstablished = true;
             }
-          } else {
-            // User starts as Guest (Not logged in)
-            setUser(null);
-            setProfile(null);
           }
         } catch {
           setUser(null);
           setProfile(null);
         }
       }
+
       setIsLoading(false);
     };
 
     initAuth();
 
     if (isSupabaseConfigured()) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-        if (session?.user) {
-          setUser({ id: session.user.id, email: session.user.email || '' });
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          if (profileData) {
-            setProfile(profileData);
-          }
-        } else {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          localStorage.removeItem(LOCAL_STORAGE_SESSION_KEY);
           setUser(null);
           setProfile(null);
+          return;
+        }
+
+        if (session?.user) {
+          const authUser = { id: session.user.id, email: session.user.email || '' };
+          setUser(authUser);
+          try {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            if (profileData) {
+              setProfile(profileData);
+            }
+          } catch {}
         }
       });
       return () => subscription.unsubscribe();
@@ -144,48 +166,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'Password must be at least 6 characters.' };
     }
 
+    // 1. If Supabase is configured, try Supabase Auth first
     if (isSupabaseConfigured()) {
       try {
         const { error, data } = await supabase.auth.signInWithPassword({
           email: trimmedEmail,
           password: cleanPassword,
         });
-        if (error) return { success: false, error: error.message };
-        if (data.user) {
+
+        if (!error && data?.user) {
           const authUser = { id: data.user.id, email: data.user.email || trimmedEmail };
           setUser(authUser);
-          
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
 
-          if (profileData) {
-            setProfile(profileData);
-          } else {
-            setProfile({
+          let userProfile: Profile | null = null;
+          try {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', data.user.id)
+              .single();
+            if (profileData) userProfile = profileData;
+          } catch {}
+
+          if (!userProfile) {
+            userProfile = {
               id: data.user.id,
               email: data.user.email || trimmedEmail,
               display_name: data.user.user_metadata?.display_name || trimmedEmail.split('@')[0],
               role: (data.user.user_metadata?.role as UserRole) || 'student',
               created_at: data.user.created_at,
-            });
+            };
           }
+
+          setProfile(userProfile);
+          localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify({
+            user: authUser,
+            profile: userProfile,
+          }));
+
+          return { success: true };
         }
-        return { success: true };
-      } catch (err: any) {
-        return { success: false, error: err.message };
+      } catch (err) {
+        console.warn('Supabase signIn error, checking registered users store:', err);
       }
-    } else {
-      // Local authentication check with password verification
-      const registeredUsers = getRegisteredUsers();
-      const matched = registeredUsers.find(u => u.profile.email.toLowerCase() === trimmedEmail);
+    }
 
-      if (!matched) {
-        return { success: false, error: 'Account not found with this email. Please check your email or sign up.' };
-      }
+    // 2. Check local registered users and default accounts
+    const registeredUsers = getRegisteredUsers();
+    const matched = registeredUsers.find(u => u.profile.email.toLowerCase() === trimmedEmail);
 
+    if (matched) {
       if (matched.passwordHash !== cleanPassword) {
         return { success: false, error: 'Incorrect password. Please try again.' };
       }
@@ -194,7 +224,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(activeUser);
       setProfile(matched.profile);
 
-      // Persist session to localStorage
       localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify({
         user: activeUser,
         profile: matched.profile,
@@ -202,6 +231,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return { success: true };
     }
+
+    return { 
+      success: false, 
+      error: 'Account not found with this email. Please check your credentials or click "Register Account" to sign up.' 
+    };
   };
 
   // Real Signup Handler
@@ -220,6 +254,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'Please enter your full name.' };
     }
 
+    let supabaseUserId: string | null = null;
+
+    // 1. If Supabase is configured, attempt Supabase Auth signup
     if (isSupabaseConfigured()) {
       try {
         const { error, data } = await supabase.auth.signUp({
@@ -228,61 +265,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           options: {
             data: {
               display_name: cleanName,
-              role: 'student', // Strict role assignment: students cannot self-assign admin
+              role: 'student',
             },
           },
         });
-        if (error) return { success: false, error: error.message };
-        if (data.user) {
-          const authUser = { id: data.user.id, email: data.user.email || trimmedEmail };
-          setUser(authUser);
-          setProfile({
-            id: data.user.id,
-            email: data.user.email || trimmedEmail,
-            display_name: cleanName,
-            role: 'student',
-            created_at: new Date().toISOString(),
-          });
+
+        if (error) {
+          console.warn('Supabase signUp warning:', error.message);
+          if (error.message.toLowerCase().includes('already registered')) {
+            return { success: false, error: 'An account with this email already exists in Supabase. Please sign in.' };
+          }
+        } else if (data?.user) {
+          supabaseUserId = data.user.id;
         }
-        return { success: true };
       } catch (err: any) {
-        return { success: false, error: err.message };
+        console.warn('Supabase signup network/exception:', err);
       }
-    } else {
-      const registeredUsers = getRegisteredUsers();
-      const existing = registeredUsers.find(u => u.profile.email.toLowerCase() === trimmedEmail);
-      if (existing) {
-        return { success: false, error: 'An account with this email already exists. Please sign in.' };
-      }
-
-      const newProfile: Profile = {
-        id: `usr-student-${Date.now()}`,
-        email: trimmedEmail,
-        display_name: cleanName,
-        role: 'student', // New signups are strictly students
-        avatar_url: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
-        created_at: new Date().toISOString(),
-      };
-
-      const newUserEntry: StoredUser = {
-        profile: newProfile,
-        passwordHash: cleanPassword,
-      };
-
-      const updatedUsers = [...registeredUsers, newUserEntry];
-      localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(updatedUsers));
-
-      const activeUser = { id: newProfile.id, email: newProfile.email };
-      setUser(activeUser);
-      setProfile(newProfile);
-
-      localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify({
-        user: activeUser,
-        profile: newProfile,
-      }));
-
-      return { success: true };
     }
+
+    // 2. Register user locally as well to guarantee immediate, reliable login
+    const registeredUsers = getRegisteredUsers();
+    const existing = registeredUsers.find(u => u.profile.email.toLowerCase() === trimmedEmail);
+
+    const userId = supabaseUserId || `usr-student-${Date.now()}`;
+    const newProfile: Profile = {
+      id: userId,
+      email: trimmedEmail,
+      display_name: cleanName,
+      role: 'student',
+      avatar_url: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
+      created_at: new Date().toISOString(),
+    };
+
+    const newUserEntry: StoredUser = {
+      profile: newProfile,
+      passwordHash: cleanPassword,
+    };
+
+    const updatedUsers = existing
+      ? registeredUsers.map(u => u.profile.email.toLowerCase() === trimmedEmail ? newUserEntry : u)
+      : [...registeredUsers, newUserEntry];
+    localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(updatedUsers));
+
+    // Establish active session immediately
+    const activeUser = { id: newProfile.id, email: newProfile.email };
+    setUser(activeUser);
+    setProfile(newProfile);
+
+    localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify({
+      user: activeUser,
+      profile: newProfile,
+    }));
+
+    return { success: true };
   };
 
   // Logout Handler
