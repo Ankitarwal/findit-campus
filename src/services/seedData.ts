@@ -192,6 +192,39 @@ export const SEED_REPORTS: ItemReport[] = [
     created_at: '2026-10-24T09:30:00Z',
     updated_at: '2026-10-24T09:30:00Z',
   },
+
+  // 6. Space Grey Apple MacBook Air M2 lost in Science Complex (Alex)
+  {
+    id: 'rep-lost-macbook',
+    reference_code: 'FIC-L6023',
+    reporter_id: 'usr-student-01',
+    report_type: 'lost',
+    title: 'Apple MacBook Air 13-inch (Space Grey)',
+    description: 'Left my Space Grey MacBook Air inside a dark charcoal magnetic felt sleeve on a round wooden study table on the 3rd floor of the Science & Technology Complex around 3:30 PM after physics lab.',
+    category: 'electronics',
+    location: 'Science & Technology Complex, 3rd Floor Atrium',
+    occurred_at: '2026-10-24T10:15:00Z',
+    image_path: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&auto=format&fit=crop&q=80',
+    distinguishing_features: 'Small metallic GitHub Octocat sticker near the trackpad, subtle hairline scratch on the top outer lid near the Apple logo.',
+    withhold_public_details: false,
+    status: 'reported',
+    ai_analysis: {
+      normalized_title: 'Apple MacBook Air 13-inch Space Grey',
+      normalized_description: 'Space Grey 13-inch MacBook Air laptop in charcoal magnetic sleeve lost in science complex.',
+      likely_category: 'electronics',
+      extracted_features: {
+        color: 'Space Grey',
+        brand: 'Apple',
+        model: 'MacBook Air 13-inch (M2)',
+        physical_traits: ['laptop', 'felt sleeve', 'octocat sticker', 'aluminum chassis'],
+      },
+      keywords: ['macbook', 'laptop', 'apple', 'space grey', 'science complex', 'atrium'],
+      location_references: ['Science & Technology Complex 3rd Floor'],
+      uncertainty_or_missing: ['Serial number withheld for security'],
+    },
+    created_at: '2026-10-24T10:45:00Z',
+    updated_at: '2026-10-24T10:45:00Z',
+  },
 ];
 
 export const SEED_MATCHES: MatchComparison[] = [
