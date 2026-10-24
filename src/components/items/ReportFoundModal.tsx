@@ -12,6 +12,7 @@ import { CATEGORY_LABELS } from '../../types/database';
 import type { ItemCategory } from '../../types/database';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
+import { uploadItemPhoto } from '../../lib/supabase';
 
 interface ReportFoundModalProps {
   onClose: () => void;
@@ -31,6 +32,7 @@ export const ReportFoundModal: React.FC<ReportFoundModalProps> = ({ onClose, onS
   const [distinguishingFeatures, setDistinguishingFeatures] = useState('');
   const [withholdPublicDetails, setWithholdPublicDetails] = useState(true);
   const [imagePath, setImagePath] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -48,6 +50,7 @@ export const ReportFoundModal: React.FC<ReportFoundModalProps> = ({ onClose, onS
         setErrorMsg('Image size must be less than 5MB');
         return;
       }
+      setImageFile(file);
       const reader = new FileReader();
       reader.onload = () => setImagePath(reader.result as string);
       reader.readAsDataURL(file);
@@ -65,6 +68,14 @@ export const ReportFoundModal: React.FC<ReportFoundModalProps> = ({ onClose, onS
     setErrorMsg('');
 
     try {
+      let finalImagePath = imagePath || undefined;
+      if (imageFile) {
+        const cloudUrl = await uploadItemPhoto(imageFile);
+        if (cloudUrl) {
+          finalImagePath = cloudUrl;
+        }
+      }
+
       const { report } = await createReport({
         report_type: 'found',
         title: title.trim(),
@@ -72,7 +83,7 @@ export const ReportFoundModal: React.FC<ReportFoundModalProps> = ({ onClose, onS
         category,
         location: location.trim(),
         occurred_at: new Date(occurredAt).toISOString(),
-        image_path: imagePath || undefined,
+        image_path: finalImagePath,
         distinguishing_features: distinguishingFeatures.trim() || undefined,
         withhold_public_details: withholdPublicDetails,
       });

@@ -152,7 +152,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         if (error) return { success: false, error: error.message };
         if (data.user) {
-          setUser({ id: data.user.id, email: data.user.email || trimmedEmail });
+          const authUser = { id: data.user.id, email: data.user.email || trimmedEmail };
+          setUser(authUser);
+          
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+
+          if (profileData) {
+            setProfile(profileData);
+          } else {
+            setProfile({
+              id: data.user.id,
+              email: data.user.email || trimmedEmail,
+              display_name: data.user.user_metadata?.display_name || trimmedEmail.split('@')[0],
+              role: (data.user.user_metadata?.role as UserRole) || 'student',
+              created_at: data.user.created_at,
+            });
+          }
         }
         return { success: true };
       } catch (err: any) {
@@ -215,7 +234,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         if (error) return { success: false, error: error.message };
         if (data.user) {
-          setUser({ id: data.user.id, email: data.user.email || trimmedEmail });
+          const authUser = { id: data.user.id, email: data.user.email || trimmedEmail };
+          setUser(authUser);
+          setProfile({
+            id: data.user.id,
+            email: data.user.email || trimmedEmail,
+            display_name: cleanName,
+            role: 'student',
+            created_at: new Date().toISOString(),
+          });
         }
         return { success: true };
       } catch (err: any) {

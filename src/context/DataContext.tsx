@@ -159,7 +159,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Save report to Supabase if configured
     if (isSupabaseConfigured()) {
       try {
-        await supabase.from('item_reports').insert([{
+        const { data: insertedReport, error: insertError } = await supabase.from('item_reports').insert([{
           reference_code: newReport.reference_code,
           reporter_id: newReport.reporter_id,
           report_type: newReport.report_type,
@@ -173,9 +173,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           withhold_public_details: newReport.withhold_public_details,
           status: newReport.status,
           ai_analysis: newReport.ai_analysis,
-        }]);
+        }]).select().single();
+
+        if (insertedReport?.id) {
+          newReport.id = insertedReport.id;
+        }
+        if (insertError) {
+          console.warn('Supabase report insert error:', insertError.message);
+        }
       } catch (err) {
-        console.error('Supabase report insert error:', err);
+        console.warn('Supabase report insert fallback:', err);
       }
     }
 
@@ -197,6 +204,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         created_at: new Date().toISOString(),
       };
       setNotifications(prev => [newNotif, ...prev]);
+
+      if (isSupabaseConfigured()) {
+        supabase.from('notifications').insert([{
+          recipient_id: newNotif.recipient_id,
+          type: newNotif.type,
+          title: newNotif.title,
+          message: newNotif.message,
+          related_report_id: newNotif.related_report_id,
+        }]).then();
+      }
     }
 
     // Append audit log
@@ -215,6 +232,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       created_at: new Date().toISOString(),
     };
     setAuditLogs(prev => [audit, ...prev]);
+
+    if (isSupabaseConfigured()) {
+      supabase.from('audit_logs').insert([{
+        actor_id: audit.actor_id,
+        action: audit.action,
+        entity_type: audit.entity_type,
+        entity_id: audit.entity_id,
+        details: audit.details,
+      }]).then();
+    }
 
     return { report: newReport, matches: candidateMatches };
   };
@@ -248,6 +275,32 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setReports(prev => prev.map(r => r.id === input.report_id ? { ...r, status: 'claim_requested' } : r));
     setClaims(prev => [newClaim, ...prev]);
 
+    // Save claim to Supabase if configured
+    if (isSupabaseConfigured()) {
+      try {
+        const { data: dbClaim, error: claimErr } = await supabase.from('claims').insert([{
+          report_id: input.report_id,
+          claimant_id: user.id,
+          private_claim_details: input.private_claim_details,
+          verification_answer: input.verification_answer,
+          contact_email: input.contact_email,
+          contact_phone: input.contact_phone,
+          status: 'pending',
+        }]).select().single();
+
+        if (dbClaim?.id) {
+          newClaim.id = dbClaim.id;
+        }
+        if (claimErr) {
+          console.warn('Supabase claim insert error:', claimErr.message);
+        }
+
+        await supabase.from('item_reports').update({ status: 'claim_requested' }).eq('id', input.report_id);
+      } catch (err) {
+        console.warn('Supabase claim insert fallback:', err);
+      }
+    }
+
     // Send notification to the finder
     const notifFinder: Notification = {
       id: `notif-${Date.now()}-finder`,
@@ -259,6 +312,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       created_at: new Date().toISOString(),
     };
     setNotifications(prev => [notifFinder, ...prev]);
+
+    if (isSupabaseConfigured()) {
+      supabase.from('notifications').insert([{
+        recipient_id: notifFinder.recipient_id,
+        type: notifFinder.type,
+        title: notifFinder.title,
+        message: notifFinder.message,
+        related_report_id: notifFinder.related_report_id,
+      }]).then();
+    }
 
     // Append audit log
     const audit: AuditLog = {
@@ -310,6 +373,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setReports(prev => prev.map(r => r.id === claim.report_id ? { ...r, status: newReportStatus! } : r));
     }
 
+    // Persist to Supabase if configured
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from('claims').update({
+          status,
+          admin_notes: adminNotes || claim.admin_notes,
+          reviewed_by: user?.id,
+          updated_at: new Date().toISOString(),
+        }).eq('id', claimId);
+
+        if (newReportStatus) {
+          await supabase.from('item_reports').update({
+            status: newReportStatus,
+            updated_at: new Date().toISOString(),
+          }).eq('id', claim.report_id);
+        }
+      } catch (err) {
+        console.warn('Supabase claim status update fallback:', err);
+      }
+    }
+
     // Notify claimant
     const notifClaimant: Notification = {
       id: `notif-${Date.now()}-claimant`,
@@ -345,6 +429,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     setReports(prev => prev.map(r => r.id === reportId ? { ...r, status, updated_at: new Date().toISOString() } : r));
+
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from('item_reports').update({
+          status,
+          updated_at: new Date().toISOString(),
+        }).eq('id', reportId);
+      } catch (err) {
+        console.warn('Supabase report status update fallback:', err);
+      }
+    }
 
     if (status === 'returned') {
       try {
@@ -394,10 +489,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Notifications
   const markNotificationAsRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n));
+    if (isSupabaseConfigured()) {
+      supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', id).then();
+    }
   };
 
   const markAllNotificationsAsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
+    if (isSupabaseConfigured() && user) {
+      supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('recipient_id', user.id).then();
+    }
   };
 
   const userNotifications = notifications.filter(n => !user || n.recipient_id === user.id);

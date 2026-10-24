@@ -162,16 +162,22 @@ ALTER TABLE public.claims ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- 10. RLS POLICIES
+-- 10. RLS POLICIES (Idempotent with DROP POLICY IF EXISTS)
 
 -- A. PROFILES
--- Anyone authenticated can view basic profile info
+DROP POLICY IF EXISTS "Profiles are viewable by authenticated users" ON public.profiles;
 CREATE POLICY "Profiles are viewable by authenticated users"
   ON public.profiles FOR SELECT
   TO authenticated
   USING (true);
 
--- Users can update only their own profile, but CANNOT change their role
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+CREATE POLICY "Users can insert own profile"
+  ON public.profiles FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Users can update own display profile" ON public.profiles;
 CREATE POLICY "Users can update own display profile"
   ON public.profiles FOR UPDATE
   TO authenticated
@@ -182,19 +188,19 @@ CREATE POLICY "Users can update own display profile"
   );
 
 -- B. ITEM REPORTS
--- Anyone can view public reports (status != 'rejected')
+DROP POLICY IF EXISTS "Public reports viewable by everyone" ON public.item_reports;
 CREATE POLICY "Public reports viewable by everyone"
   ON public.item_reports FOR SELECT
   TO authenticated, anon
   USING (status != 'rejected' OR auth.uid() = reporter_id OR public.is_admin());
 
--- Authenticated users can insert their own reports
+DROP POLICY IF EXISTS "Users can create their own reports" ON public.item_reports;
 CREATE POLICY "Users can create their own reports"
   ON public.item_reports FOR INSERT
   TO authenticated
   WITH CHECK (auth.uid() = reporter_id);
 
--- Reporters can update their own reports if not yet returned/closed; Admins can update any
+DROP POLICY IF EXISTS "Reporters or admins can update reports" ON public.item_reports;
 CREATE POLICY "Reporters or admins can update reports"
   ON public.item_reports FOR UPDATE
   TO authenticated
@@ -202,7 +208,7 @@ CREATE POLICY "Reporters or admins can update reports"
   WITH CHECK (auth.uid() = reporter_id OR public.is_admin());
 
 -- C. ITEM MATCHES
--- Visible only to the reporter of the lost item, reporter of found item, or admins
+DROP POLICY IF EXISTS "Matches visible to involved parties or admins" ON public.item_matches;
 CREATE POLICY "Matches visible to involved parties or admins"
   ON public.item_matches FOR SELECT
   TO authenticated
@@ -214,14 +220,26 @@ CREATE POLICY "Matches visible to involved parties or admins"
     )
   );
 
--- Only admins or service role can insert/update matches
+DROP POLICY IF EXISTS "Admins or service role manage matches" ON public.item_matches;
 CREATE POLICY "Admins or service role manage matches"
   ON public.item_matches FOR ALL
   TO authenticated
   USING (public.is_admin());
 
+DROP POLICY IF EXISTS "Users can insert matches for their reports" ON public.item_matches;
+CREATE POLICY "Users can insert matches for their reports"
+  ON public.item_matches FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    public.is_admin() OR
+    EXISTS (
+      SELECT 1 FROM public.item_reports r
+      WHERE (r.id = lost_report_id OR r.id = found_report_id) AND r.reporter_id = auth.uid()
+    )
+  );
+
 -- D. CLAIMS (STRICT PRIVACY)
--- Claims visible only to the claimant, the item finder, or admins
+DROP POLICY IF EXISTS "Claims visible only to claimant, finder, or admins" ON public.claims;
 CREATE POLICY "Claims visible only to claimant, finder, or admins"
   ON public.claims FOR SELECT
   TO authenticated
@@ -234,7 +252,7 @@ CREATE POLICY "Claims visible only to claimant, finder, or admins"
     )
   );
 
--- Authenticated users can create claims for other users' reports
+DROP POLICY IF EXISTS "Authenticated users can submit claims" ON public.claims;
 CREATE POLICY "Authenticated users can submit claims"
   ON public.claims FOR INSERT
   TO authenticated
@@ -246,7 +264,7 @@ CREATE POLICY "Authenticated users can submit claims"
     )
   );
 
--- Only admins or the report finder can update claim status
+DROP POLICY IF EXISTS "Admins or finders can update claims" ON public.claims;
 CREATE POLICY "Admins or finders can update claims"
   ON public.claims FOR UPDATE
   TO authenticated
@@ -259,40 +277,51 @@ CREATE POLICY "Admins or finders can update claims"
   );
 
 -- E. NOTIFICATIONS
+DROP POLICY IF EXISTS "Users read own notifications" ON public.notifications;
 CREATE POLICY "Users read own notifications"
   ON public.notifications FOR SELECT
   TO authenticated
   USING (recipient_id = auth.uid());
 
+DROP POLICY IF EXISTS "Users update own notifications" ON public.notifications;
 CREATE POLICY "Users update own notifications"
   ON public.notifications FOR UPDATE
   TO authenticated
   USING (recipient_id = auth.uid())
   WITH CHECK (recipient_id = auth.uid());
 
+DROP POLICY IF EXISTS "Authenticated users can create notifications" ON public.notifications;
+CREATE POLICY "Authenticated users can create notifications"
+  ON public.notifications FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
 -- F. AUDIT LOGS (Admins only read, append only)
+DROP POLICY IF EXISTS "Admins read audit logs" ON public.audit_logs;
 CREATE POLICY "Admins read audit logs"
   ON public.audit_logs FOR SELECT
   TO authenticated
   USING (public.is_admin());
 
+DROP POLICY IF EXISTS "Authenticated users or system can append audit logs" ON public.audit_logs;
 CREATE POLICY "Authenticated users or system can append audit logs"
   ON public.audit_logs FOR INSERT
   TO authenticated
   WITH CHECK (true);
 
--- 11. STORAGE BUCKET CONFIGURATION
--- (Executed in Supabase SQL editor or CLI)
+-- 11. STORAGE BUCKET CONFIGURATION (item-photos)
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('item-photos', 'item-photos', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage policies for item-photos
+DROP POLICY IF EXISTS "Public item photos are viewable" ON storage.objects;
 CREATE POLICY "Public item photos are viewable"
   ON storage.objects FOR SELECT
   TO public
   USING (bucket_id = 'item-photos');
 
+DROP POLICY IF EXISTS "Authenticated users can upload item photos" ON storage.objects;
 CREATE POLICY "Authenticated users can upload item photos"
   ON storage.objects FOR INSERT
   TO authenticated
