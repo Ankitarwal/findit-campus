@@ -21,27 +21,16 @@ class AiService {
   }
 
   public getStatus(): { status: AiStatus; model: string; hasKey: boolean } {
+    const hasEdgeFunction = isSupabaseConfigured();
     const hasKey = Boolean(this.config.apiKey && this.config.apiKey.length > 5);
     return {
-      status: hasKey ? 'connected' : 'not_configured',
+      status: (hasEdgeFunction || hasKey) ? 'connected' : 'not_configured',
       model: this.config.model,
-      hasKey,
+      hasKey: hasEdgeFunction || hasKey,
     };
   }
 
-  public updateRuntimeConfig(newConfig: Partial<AiServiceConfig>) {
-    this.config = { ...this.config, ...newConfig };
-    if (newConfig.apiKey) {
-      sessionStorage.setItem('FIC_RUNTIME_GEMMA_KEY', newConfig.apiKey);
-    }
-  }
-
-  constructor() {
-    const savedKey = typeof window !== 'undefined' ? sessionStorage.getItem('FIC_RUNTIME_GEMMA_KEY') : null;
-    if (savedKey) {
-      this.config.apiKey = savedKey;
-    }
-  }
+  constructor() {}
 
   /**
    * Feature A: Intelligent Description Analysis with Gemma 4

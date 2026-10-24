@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, ShieldCheck, Cpu, Key, CheckCircle2 } from 'lucide-react';
+import { Sparkles, ShieldCheck, Cpu } from 'lucide-react';
 import { aiService } from '../../services/aiService';
 
 export const AiStatusBadge: React.FC = () => {
@@ -34,17 +34,6 @@ export const AiStatusBadge: React.FC = () => {
 
 export const AiTransparencyModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const status = aiService.getStatus();
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [savedSuccess, setSavedSuccess] = useState(false);
-
-  const handleSaveKey = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (apiKeyInput.trim()) {
-      aiService.updateRuntimeConfig({ apiKey: apiKeyInput.trim() });
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 2500);
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-sm animate-fadeIn">
@@ -139,35 +128,15 @@ export const AiTransparencyModal: React.FC<{ onClose: () => void }> = ({ onClose
             </div>
           </div>
 
-          {/* Optional Live Key Input for Hackathon Judges */}
+          {/* Server-Side Edge Inference & Security Architecture */}
           <div className="border-t border-slate-100 pt-5">
             <div className="flex items-center gap-2 mb-2 font-semibold text-slate-800 text-xs uppercase tracking-wider">
-              <Key className="w-4 h-4 text-slate-600" />
-              Live Inference API Key (Optional)
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              Server-Side Edge Inference & Security
             </div>
-            <p className="text-xs text-slate-500 mb-3">
-              FindIt Campus works out of the box with built-in hybrid matching. If you have an OpenRouter or Google AI Studio key to test live Gemma 4 inference directly in the session, paste it below. Keys are stored only in memory/sessionStorage.
+            <p className="text-xs text-slate-500 leading-relaxed">
+              In accordance with campus security and privacy protocols, all AI model inference is processed server-side via Supabase Edge Functions with securely vaulted secrets. No API keys, credentials, or sensitive student records are ever exposed to or entered in the browser.
             </p>
-            <form onSubmit={handleSaveKey} className="flex gap-2">
-              <input
-                type="password"
-                placeholder="sk-or-... or Gemma inference key"
-                value={apiKeyInput}
-                onChange={e => setApiKeyInput(e.target.value)}
-                className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono"
-              />
-              <button
-                type="submit"
-                className="btn-primary text-xs px-4 py-2"
-              >
-                Apply Key
-              </button>
-            </form>
-            {savedSuccess && (
-              <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-600 font-medium animate-fadeIn">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Key updated! Gemma 4 inference is now active for this session.
-              </div>
-            )}
           </div>
         </div>
 
